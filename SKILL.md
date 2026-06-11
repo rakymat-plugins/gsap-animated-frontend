@@ -226,3 +226,107 @@ gsap.registerPlugin(ScrollTrigger);
 | No reduced-motion fallback | Wrap animations in `matchMedia("(prefers-reduced-motion: no-preference)")` |
 | Heavy scroll animations on mobile | Use `ScrollTrigger.matchMedia` to disable on small screens |
 | FOUC (flash of unstyled content) | Set initial states in CSS (`opacity: 0; transform: translateY(20px)`) |
+
+## CLI Toolkit Commands
+
+The skill includes a Python CLI (`gsap_cli.py`) for real background automation:
+
+| Command | What It Does |
+|---------|-------------|
+| `python gsap_cli.py init` | Install GSAP deps, create config, scaffold animation hooks + CSS |
+| `python gsap_cli.py scan` | Scan project for GSAP usage + find animation opportunities |
+| `python gsap_cli.py audit` | Audit animations for performance, a11y, and best practices. Outputs health score. |
+| `python gsap_cli.py report` | Full animation report: coverage %, feature checklist, score, recommendations |
+| `python gsap_cli.py recipes` | Browse all 20 animation recipes with descriptions |
+| `python gsap_cli.py watch` | Real-time file watcher — reports animation issues as you code |
+| `python gsap_cli.py config` | Display current animation config (gsap-animations.yaml) |
+
+### When to use CLI vs manual:
+
+```dot
+digraph cli_decision {
+  "Starting new project?" [shape=diamond];
+  "Run gsap init" [shape=box, style=filled, fillcolor="#e8f5e9"];
+  "Adding animations?" [shape=diamond];
+  "Run gsap scan first" [shape=box, style=filled, fillcolor="#e3f2fd"];
+  "Debugging perf?" [shape=diamond];
+  "Run gsap audit" [shape=box, style=filled, fillcolor="#fff3e0"];
+  "Run interview manually" [shape=box];
+
+  "Starting new project?" -> "Run gsap init" [label="yes"];
+  "Starting new project?" -> "Adding animations?" [label="no"];
+  "Adding animations?" -> "Run gsap scan first" [label="yes"];
+  "Adding animations?" -> "Debugging perf?" [label="no"];
+  "Debugging perf?" -> "Run gsap audit" [label="yes"];
+  "Debugging perf?" -> "Run interview manually" [label="no"];
+}
+```
+
+### Auto-generated files from `gsap init`:
+
+- `src/lib/animations/use-animations.tsx` — Reusable hooks: `useScrollReveal`, `useCountUp`, `useHoverLift`, `useMagneticButton`
+- `src/lib/animations/gsap-initial-states.css` — Anti-FOUC CSS classes + reduced-motion fallbacks
+- `src/lib/animations/use-reduced-motion.tsx` — React hook for checking `prefers-reduced-motion`
+- `gsap-animations.yaml` — Animation config file (philosophy, sections, effects, performance settings)
+
+## GSAP Complete API Knowledge
+
+This skill covers ALL GSAP features for every use case:
+
+### Core Methods
+- `gsap.to()` / `gsap.from()` / `gsap.fromTo()` / `gsap.set()` — Tween creation
+- `gsap.timeline()` — Sequencing with position parameters (`"-=0.3"`, `"<"`, `"+=0.5"`)
+- `gsap.registerPlugin()` — Plugin registration
+- `gsap.matchMedia()` — Responsive breakpoint animations
+- `gsap.context()` — Scoped cleanup for vanilla JS
+- `gsap.quickTo()` / `gsap.quickSetter()` — High-performance mouse-follow
+- `gsap.registerEffect()` — Reusable named animation effects
+- `gsap.defaults()` — Global default settings
+
+### All Special Properties
+- `duration`, `ease`, `delay`, `stagger`, `repeat`, `yoyo`, `yoyoEase`
+- `onStart`, `onUpdate`, `onComplete`, `onRepeat`, `onReverseComplete`
+- `overwrite` ("auto" | true | false), `paused`, `reversed`, `invalidate`
+- `keyframes` — Array-based multi-step animations
+- `startAt` — Set initial values before animating
+- `repeatRefresh` — Re-record values on each repeat cycle
+
+### ScrollTrigger (Complete)
+- `trigger`, `start`/`end` (all position syntaxes), `endTrigger`
+- `scrub` (true, number), `pin`, `pinSpacing`, `anticipatePin`
+- `snap` (number, array, object with directional snap)
+- `toggleActions` ("play reverse play reverse" etc.)
+- `toggleClass` — CSS class toggle on enter/leave
+- `onEnter`, `onLeave`, `onEnterBack`, `onLeaveBack`, `onUpdate`, `onToggle`
+- `markers` — Visual debugging
+- `ScrollTrigger.batch()` — Performance-optimized for repeated elements
+- `ScrollTrigger.create()` — Standalone triggers without animation
+- `ScrollTrigger.matchMedia()` — Responsive triggers
+- `ScrollTrigger.refresh()` — Recalculate after layout changes
+- `containerAnimation` — Nested triggers inside horizontal scroll
+- `preventOverlaps` / `fastScrollEnd` — Prevent animation pile-up
+
+### All Easing Functions
+- Power: `power1-4` with `.in`, `.out`, `.inOut`
+- Special: `back`, `bounce`, `elastic`, `expo`, `circ`, `sine`
+- Linear: `"none"` or `"linear"`
+- Steps: `"steps(N)"` for frame-by-frame
+- Custom: `CustomEase.create()` for Bezier curves
+- Slow: `"slow(0.7, 0.7, false)"` for ease-in-middle
+
+### Utility Methods
+- `gsap.utils.toArray()`, `.snap()`, `.clamp()`, `.mapRange()`, `.normalize()`
+- `.wrap()`, `.wrapYoyo()`, `.distribute()`, `.interpolate()`, `.random()`
+- `.pipe()` — Chain multiple utilities, `.shuffle()`, `.selector()`, `.unitize()`
+
+### Premium/Club Plugins (reference only)
+- `SplitText` — Character/word/line splitting for text animations
+- `ScrollSmoother` — Smooth scrolling with effects
+- `MorphSVGPlugin` — Shape morphing between SVG paths
+- `DrawSVGPlugin` — Animate SVG stroke drawing
+- `Flip` — Layout transition animations (FLIP technique)
+- `MotionPathPlugin` — Animate along SVG/custom paths
+- `ScrambleTextPlugin` — Scramble text characters
+- `Observer` — Unified touch/scroll/pointer event handling
+- `Draggable` — Drag-and-drop with inertia
+- `TextPlugin` — Animate text content changes
