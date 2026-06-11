@@ -183,15 +183,13 @@ This prevents agents from trying to rebuild an entire page in one pass and usual
 
 ## Installation
 
-### Install via skills.sh CLI
-
-The official `skills.sh` docs recommend installing skills from your project root with:
+Install from your project root with:
 
 ```bash
 npx skills add yousefabdallah171/gsap-animated-frontend
 ```
 
-This is the best cross-agent install path for:
+This is the only documented install path for:
 
 - Claude Code
 - Codex
@@ -201,57 +199,74 @@ This is the best cross-agent install path for:
 
 After installation, start a new agent session in that project so the skill files are picked up.
 
-### Agent Notes
-
-- Claude Code: run `npx skills add yousefabdallah171/gsap-animated-frontend` from the project root, then start a new Claude Code session.
-- Codex: run `npx skills add yousefabdallah171/gsap-animated-frontend` from the project root, then start a new Codex session.
-- Gemini: run `npx skills add yousefabdallah171/gsap-animated-frontend` from the project root, then start a new Gemini session.
-
-### Clone as a skill package
-
-```bash
-git clone https://github.com/yousefabdallah171/gsap-animated-frontend.git
-```
-
-This manual clone option is still useful when you want to inspect or customize the skill package directly.
-
-### Install Python dependencies
-
-```bash
-cd gsap-animated-frontend
-pip install -r requirements.txt
-```
-
 ---
 
 ## Usage
 
-### Install into a project with skills.sh
+After install, restart your agent session in the project.
 
-```bash
-npx skills add yousefabdallah171/gsap-animated-frontend
-```
-
-Then restart your agent session in that project.
-
-### New animation work
-
-```bash
-python gsap_cli.py gsap-new --path "<project-path>" --page "homepage"
-```
-
-### Refactor existing animation work
-
-```bash
-python gsap_cli.py gsap-refactor --path "<project-path>" --page "homepage"
-```
-
-### What the install command does
-
-The `skills` CLI installs the skill files into your repository so agents can reference `SKILL.md` and related files across sessions. This repo keeps the public workflow centered on:
+Use only these two public workflows:
 
 - `gsap-new`
 - `gsap-refactor`
+
+### `gsap-new`
+
+Use for:
+
+- new pages
+- new sections
+- greenfield animation systems
+
+Workflow behavior:
+
+1. reads existing `.gsap` artifacts if they exist
+2. discovers framework, routes, page files, motion stack, and brand signals
+3. asks only the missing questions
+4. writes `.gsap/animation-spec.md`
+5. writes `.gsap/animation-plan.md`
+6. writes `.gsap/tasks/<page>.tasks.md`
+7. writes `.gsap/phases/<page>/phase-files`
+8. moves implementation one section phase at a time
+
+### `gsap-refactor`
+
+Use for:
+
+- existing pages
+- existing components
+- motion cleanup and upgrades
+
+Workflow behavior:
+
+1. reads current code first
+2. reads existing `.gsap` artifacts
+3. audits the motion system
+4. generates a phased refactor plan
+5. updates `.gsap/audit-report.md`
+6. writes or refreshes tasks and phase files
+7. improves one section phase at a time
+
+### Resulting Project State
+
+```text
+your-project/
+└── .gsap/
+    ├── animation-spec.md
+    ├── animation-plan.md
+    ├── audit-report.md
+    ├── tasks/
+    │   └── homepage.tasks.md
+    ├── phases/
+    │   └── homepage/
+    │       ├── p01-hero.md
+    │       ├── p02-feature-grid.md
+    │       └── p03-stats.md
+    └── pages/
+        └── homepage.animation.md
+```
+
+These files are the workflow memory. A fresh agent session should resume from them instead of relying on chat history.
 
 ---
 
