@@ -11,6 +11,7 @@
 - Next Agent Action:
 - Blocking Questions:
 - Discovery Confidence:
+- Active Phase:
 
 ## Sections
 
@@ -50,3 +51,9 @@
 ## Recommended Motion Directions
 
 - Pending discovery
+
+## Phase Status
+
+| Phase | Section | Recipe | Status | Notes |
+|------|---------|--------|--------|-------|
+|      |         |        | Planned |       |

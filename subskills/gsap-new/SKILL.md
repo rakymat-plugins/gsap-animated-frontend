@@ -15,9 +15,10 @@ Use this workflow for new pages, new sections, and greenfield animation work.
 4. Let the script detect framework, packages, routes, likely sections, and visual signals first.
 5. Interview only for missing decisions.
 6. Update `.gsap/animation-spec.md` and `.gsap/pages/<page>.animation.md`.
-7. Generate or refresh `.gsap/animation-plan.md`.
-8. Implement section by section.
-9. Update statuses in the page artifact.
+7. Generate or refresh `.gsap/animation-plan.md`, `.gsap/tasks/<page>.tasks.md`, and `.gsap/phases/<page>/*.md`.
+8. Split the work into phases so each phase owns one major section only.
+9. Implement only the active phase unless the user explicitly asks for more.
+10. Update statuses in the page, plan, tasks, and phase artifacts.
 
 ## Internal Helper
 
@@ -48,4 +49,6 @@ Before finishing, ensure:
 
 - `.gsap/pages/<page>.animation.md` reflects actual status
 - `.gsap/animation-plan.md` reflects the latest section order and recipes
+- `.gsap/tasks/<page>.tasks.md` reflects the phase queue
+- `.gsap/phases/<page>/` contains one file per major section phase
 - implementation follows current code, not generic examples

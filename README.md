@@ -6,7 +6,7 @@
 
 <p align="center">
   <b>A persistent, recoverable GSAP workflow for coding agents.</b><br/>
-  <sub>Two user-facing commands. Internal helpers. .gsap artifacts as the source of truth.</sub>
+  <sub>Two user-facing commands. Internal helpers. Persistent phased artifacts as the source of truth.</sub>
 </p>
 
 ---
@@ -28,7 +28,7 @@ The core design goal is simple:
 - only **2 user-facing commands**
 - persistent workflow state in `.gsap/`
 - recoverable progress after interruption
-- internal Python helpers for scanning, artifact generation, and workflow orchestration
+- internal Python helpers for scanning, artifact generation, interview generation, and phased workflow orchestration
 
 ---
 
@@ -47,10 +47,11 @@ Use for:
 What it does:
 
 1. Creates or updates `.gsap` artifacts
-2. Interviews only when required
-3. Generates animation specifications
-4. Generates implementation plan
-5. Applies implementation workflow
+2. Discovers framework, packages, structure, brand signals, and motion opportunities
+3. Interviews only when required
+4. Generates animation specifications
+5. Generates a phased implementation plan
+6. Prepares one-section-at-a-time task files
 
 ### `gsap-refactor`
 
@@ -65,8 +66,8 @@ What it does:
 1. Reads existing code
 2. Reads existing `.gsap` artifacts
 3. Audits the current motion system
-4. Generates a refactor plan
-5. Applies safe improvements
+4. Generates a phased refactor plan
+5. Applies safe improvements section by section
 6. Updates artifacts
 
 ---
@@ -81,6 +82,12 @@ your-project/
     ├── animation-spec.md
     ├── animation-plan.md
     ├── audit-report.md
+    ├── tasks/
+    │   └── homepage.tasks.md
+    ├── phases/
+    │   └── homepage/
+    │       ├── p01-hero.md
+    │       └── p02-feature-grid.md
     └── pages/
         ├── homepage.animation.md
         ├── schools.animation.md
@@ -99,7 +106,11 @@ gsap-animated-frontend/
 ├── gsap_cli.py
 ├── requirements.txt
 ├── scripts/
-│   └── gsap_workflow.py
+│   ├── gsap_workflow.py
+│   ├── brand_extractor.py
+│   ├── structure_search.py
+│   ├── interview_generator.py
+│   └── phase_planner.py
 ├── subskills/
 │   ├── gsap-new/
 │   │   └── SKILL.md
@@ -109,7 +120,9 @@ gsap-animated-frontend/
 │   ├── animation-spec.md
 │   ├── animation-plan.md
 │   ├── audit-report.md
-│   └── page-animation.md
+│   ├── animation-tasks.md
+│   ├── page-animation.md
+│   └── phase.md
 ├── references/
 │   ├── animation-recipes.md
 │   ├── gsap-core-patterns.md
@@ -123,8 +136,9 @@ gsap-animated-frontend/
 
 - `SKILL.md` is the root router
 - `subskills/gsap-new` and `subskills/gsap-refactor` are the only public workflows
-- `scripts/gsap_workflow.py` handles internal orchestration
-- `templates/` creates the persistent `.gsap` state
+- `scripts/gsap_workflow.py` orchestrates the workflow
+- dedicated helper scripts extract brand signals, discover structure, generate interview questions, and build phases
+- `templates/` creates persistent `.gsap` state for spec-driven execution
 - `references/` holds optional detailed guidance
 
 ---
@@ -134,6 +148,10 @@ gsap-animated-frontend/
 The system may use internal script commands such as:
 
 - artifact bootstrap
+- brand extraction
+- structure search
+- interview question generation
+- phase planning
 - workflow state updates
 - code inspection
 - motion audit prep
@@ -145,6 +163,21 @@ The public UX stays centered on:
 
 - `gsap-new`
 - `gsap-refactor`
+
+## Spec-Driven Workflow
+
+This package is now designed to behave more like spec-driven development than a one-shot animation prompt.
+
+The engine should:
+
+1. discover the real project structure and visual language
+2. write findings into `.gsap` artifacts
+3. generate a phased plan
+4. generate per-page task files
+5. generate one phase file per section
+6. implement one major section at a time
+
+This prevents agents from trying to rebuild an entire page in one pass and usually leads to cleaner motion hierarchy, better reduced-motion coverage, and better final quality.
 
 ---
 

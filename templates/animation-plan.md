@@ -6,6 +6,7 @@
 - Resume State:
 - Last Updated By:
 - Suggested Next Command:
+- Active Phase:
 
 ## Target Scope
 
@@ -28,6 +29,12 @@
 |------|---------|--------|--------|-------|
 |      |         |        | Planned |       |
 
+## Phases
+
+| Phase | Page | Section | Objective | Recipe | Status |
+|------|------|---------|-----------|--------|--------|
+|      |      |         |           |        | Planned |
+
 ## Validation Checklist
 
 - [ ] Reduced motion covered
@@ -35,3 +42,5 @@
 - [ ] Existing code inspected before changes
 - [ ] Page artifact updated after implementation
 - [ ] Discovery questions resolved or consciously deferred
+- [ ] Tasks file created or refreshed
+- [ ] Phase files created or refreshed

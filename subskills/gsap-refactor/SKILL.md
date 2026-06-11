@@ -14,9 +14,10 @@ Use this workflow for existing pages/components that already have code and may a
 3. Run internal discovery, audit, and scan helpers.
 4. Detect framework, packages, routes, current motion libraries, and matched page files.
 5. Identify what to preserve, remove, simplify, or improve.
-6. Update `.gsap/audit-report.md` and `.gsap/animation-plan.md`.
-7. Apply safe changes.
-8. Update page artifact statuses and notes.
+6. Update `.gsap/audit-report.md`, `.gsap/animation-plan.md`, `.gsap/tasks/<page>.tasks.md`, and `.gsap/phases/<page>/*.md`.
+7. Split the refactor into phased sections instead of sweeping the full page at once.
+8. Apply safe changes to the active phase only unless the user asks for a broader pass.
+9. Update page artifact statuses and notes.
 
 ## Internal Helper
 
@@ -42,4 +43,6 @@ Before finishing, ensure:
 
 - `.gsap/audit-report.md` records major findings and fixes
 - `.gsap/animation-plan.md` reflects the refactor priorities
+- `.gsap/tasks/<page>.tasks.md` reflects the current queue and active phase
+- `.gsap/phases/<page>/` reflects the refactor section breakdown
 - `.gsap/pages/<page>.animation.md` reflects the final status

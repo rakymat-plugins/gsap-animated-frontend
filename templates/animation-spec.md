@@ -31,3 +31,10 @@
 - Brand references:
 - Sections needing strongest emphasis:
 - Elements to avoid over-animating:
+
+## Spec-Driven Rules
+
+- Planning must happen before implementation.
+- Work must be split into phases with one major section per phase.
+- Each phase must have explicit reduced-motion and mobile downgrade notes.
+- The next agent should be able to resume from artifacts alone.

@@ -42,10 +42,16 @@ For existing pages/components that need improvement:
 Use internal scripts and templates for support work:
 
 - `scripts/gsap_workflow.py`
+- `scripts/brand_extractor.py`
+- `scripts/structure_search.py`
+- `scripts/interview_generator.py`
+- `scripts/phase_planner.py`
 - `templates/animation-spec.md`
 - `templates/animation-plan.md`
 - `templates/audit-report.md`
+- `templates/animation-tasks.md`
 - `templates/page-animation.md`
+- `templates/phase.md`
 
 Use references only as needed:
 
@@ -62,3 +68,5 @@ Use references only as needed:
 4. Include reduced-motion and mobile downgrade rules in every plan.
 5. Keep helper commands internal; the visible experience stays centered on `gsap-new` and `gsap-refactor`.
 6. Let the workflow script inspect framework, packages, page structure, design signals, and existing motion before asking questions.
+7. Do not implement an entire page in one pass; generate phased artifacts and execute one major section per phase.
+8. Keep `.gsap/tasks/*.md` and `.gsap/phases/**/*.md` current so a fresh agent can resume safely.
