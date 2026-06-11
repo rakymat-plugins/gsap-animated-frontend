@@ -6,15 +6,19 @@ import re
 from pathlib import Path
 
 SECTION_PATTERNS = {
-    "Hero": ("hero", "banner", "masthead", "headline"),
-    "Navigation": ("navbar", "topbar", "header", "nav"),
-    "Feature Grid": ("feature", "card", "grid", "listing", "gallery"),
-    "Stats": ("stats", "stat", "metric", "count"),
-    "Testimonials": ("testimonial", "review", "quote", "social proof"),
-    "Showcase": ("showcase", "gallery", "marquee", "slider"),
-    "Timeline": ("timeline", "steps", "process", "journey"),
-    "FAQ": ("faq", "accordion", "question"),
-    "CTA": ("cta", "call-to-action", "footer", "contact"),
+    "Hero": ("hero", "banner", "masthead", "headline", "intro", "above-the-fold", "jumbotron", "spotlight"),
+    "Navigation": ("navbar", "topbar", "header", "nav", "menu", "site-header", "toolbar"),
+    "Feature Grid": ("feature", "card", "grid", "listing", "gallery", "collection", "services", "benefits", "products"),
+    "Stats": ("stats", "stat", "metric", "count", "counter", "numbers", "kpi", "milestone"),
+    "Testimonials": ("testimonial", "review", "quote", "social proof", "success story", "feedback", "rating"),
+    "Showcase": ("showcase", "gallery", "marquee", "slider", "carousel", "case study", "portfolio", "highlight"),
+    "Timeline": ("timeline", "steps", "process", "journey", "roadmap", "milestones", "workflow"),
+    "FAQ": ("faq", "accordion", "question", "help", "support", "common questions"),
+    "Pricing": ("pricing", "plans", "tiers", "subscription", "billing"),
+    "Logos": ("logos", "partners", "clients", "brands", "trusted by"),
+    "Team": ("team", "members", "leadership", "founders", "staff"),
+    "Form": ("form", "signup", "sign-up", "contact form", "newsletter", "waitlist", "booking form"),
+    "CTA": ("cta", "call-to-action", "footer", "contact", "book now", "get started", "apply now"),
 }
 
 
@@ -58,23 +62,48 @@ def infer_component_patterns(content: str):
         patterns.append("Repeated collection render")
     if "swiper" in lower or "carousel" in lower or "slider" in lower:
         patterns.append("Carousel or slider")
+    if "tabs" in lower or "tabpanel" in lower:
+        patterns.append("Tabbed interface")
     if "dialog" in lower or "modal" in lower:
         patterns.append("Modal interactions")
+    if "dropdown" in lower or "popover" in lower or "tooltip" in lower:
+        patterns.append("Overlay interactions")
     if "sticky" in lower:
         patterns.append("Sticky positioning")
+    if "marquee" in lower or "infinite-scroll" in lower or "ticker" in lower:
+        patterns.append("Marquee or ticker")
     if "canvas" in lower or "webgl" in lower or "three" in lower:
         patterns.append("3D or canvas surface")
     if "video" in lower:
         patterns.append("Video surface")
+    if "chart" in lower or "graph" in lower or "recharts" in lower or "victory" in lower or "nivo" in lower:
+        patterns.append("Data visualization")
+    if "table" in lower or "datatable" in lower or "gridjs" in lower or "tanstack table" in lower:
+        patterns.append("Data table")
+    if "sidebar" in lower or "drawer" in lower or "offcanvas" in lower:
+        patterns.append("Sidebar or drawer")
+    if "search" in lower or "filter" in lower or "sort" in lower:
+        patterns.append("Search and filtering")
+    if "auth" in lower or "login" in lower or "signup" in lower or "sign in" in lower:
+        patterns.append("Auth surface")
+    if "calendar" in lower or "schedule" in lower or "booking" in lower:
+        patterns.append("Calendar or booking flow")
     return patterns
 
 
 def find_page_files(root: Path, page: str, scan_files, slugify, read_text):
     token = slugify(page)
     matches = []
-    aliases = {token, token.replace("-", "")}
+    aliases = {token, token.replace("-", ""), token.replace("-", " ")}
     if token in {"home", "homepage", "landing", "index"}:
         aliases.update({"home", "homepage", "landing", "index"})
+    aliases.update(
+        {
+            token.replace("-page", ""),
+            token.replace("-section", ""),
+            token.replace("landing", "home"),
+        }
+    )
 
     for source_file in scan_files(root):
         path_lower = source_file.as_posix().lower()
@@ -136,5 +165,6 @@ def discover_page_structure(root: Path, page: str, scan_files, read_text, slugif
         "repeated_components": repeated[:10],
         "patterns": deduped_patterns[:10],
         "selector_samples": selector_samples[:12],
+        "selector_keywords": selector_samples[:24],
         "source_file": page_files[0].as_posix() if page_files else "",
     }

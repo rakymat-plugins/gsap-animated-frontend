@@ -24,6 +24,21 @@ TONE_KEYWORDS = (
     "glass",
     "cinematic",
     "futuristic",
+    "sleek",
+    "energetic",
+    "corporate",
+    "elegant",
+    "immersive",
+    "clean",
+    "vibrant",
+    "brutalist",
+    "organic",
+    "minimalist",
+    "fashion",
+    "saas",
+    "fintech",
+    "ai",
+    "startup",
 )
 
 
@@ -38,9 +53,20 @@ def find_brand_files(root: Path, scan_files):
         root / "app" / "globals.css",
         root / "styles" / "globals.css",
         root / "styles" / "theme.css",
+        root / "styles" / "tokens.css",
+        root / "styles" / "variables.css",
+        root / "src" / "styles" / "theme.css",
+        root / "src" / "styles" / "tokens.css",
+        root / "src" / "styles" / "variables.css",
+        root / "src" / "theme" / "index.ts",
+        root / "src" / "theme" / "tokens.ts",
+        root / "src" / "design-system" / "tokens.ts",
+        root / "src" / "design-system" / "theme.ts",
         root / "apps" / "web" / "tailwind.config.ts",
         root / "apps" / "web" / "tailwind.config.js",
         root / "apps" / "web" / "src" / "app" / "globals.css",
+        root / "apps" / "web" / "src" / "styles" / "globals.css",
+        root / "apps" / "web" / "src" / "styles" / "theme.css",
     ]
 
     files = [path for path in candidate_paths if path.exists()]
@@ -64,6 +90,10 @@ def extract_brand_signals(root: Path, scan_files, read_text):
     radii = Counter()
     tone_hints = Counter()
     gradients = 0
+    blur_usage = 0
+    backdrop_usage = 0
+    uppercase_usage = 0
+    letter_spacing_usage = 0
 
     for source_file in find_brand_files(root, scan_files):
         content = read_text(source_file)
@@ -81,6 +111,14 @@ def extract_brand_signals(root: Path, scan_files, read_text):
             radii[radius_match.strip()] += 1
         if "gradient" in lower:
             gradients += lower.count("gradient")
+        if "blur" in lower:
+            blur_usage += lower.count("blur")
+        if "backdrop-filter" in lower:
+            backdrop_usage += lower.count("backdrop-filter")
+        if "text-transform: uppercase" in lower:
+            uppercase_usage += lower.count("text-transform: uppercase")
+        if "letter-spacing" in lower or "tracking-" in lower:
+            letter_spacing_usage += lower.count("letter-spacing") + lower.count("tracking-")
         for keyword in TONE_KEYWORDS:
             if keyword in lower:
                 tone_hints[keyword] += lower.count(keyword)
@@ -88,12 +126,14 @@ def extract_brand_signals(root: Path, scan_files, read_text):
     visual_direction = []
     if gradients:
         visual_direction.append("gradient-rich")
-    if any("blur" in item.lower() for item in css_vars):
+    if blur_usage or backdrop_usage or any("blur" in item.lower() for item in css_vars):
         visual_direction.append("glass-friendly")
     if any("rem" in item or "px" in item for item in radii):
         visual_direction.append("rounded-ui")
     if any("shadow" in item.lower() or "0 " in item for item in shadows):
         visual_direction.append("depth-layering")
+    if uppercase_usage or letter_spacing_usage:
+        visual_direction.append("editorial-typography")
 
     return {
         "colors": [item for item, _ in colors.most_common(10)],
@@ -104,4 +144,6 @@ def extract_brand_signals(root: Path, scan_files, read_text):
         "tone_hints": [item for item, _ in tone_hints.most_common(8)],
         "visual_direction": visual_direction,
         "gradient_count": gradients,
+        "blur_usage": blur_usage,
+        "backdrop_usage": backdrop_usage,
     }

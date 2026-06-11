@@ -24,6 +24,16 @@ def build_interview_questions(discovery: dict, mode: str):
         questions.append("Should repeated cards share one reveal system, or should featured cards feel more premium than the rest?")
     if "Hero" in page_structure["sections"]:
         questions.append("Should the hero motion feel premium and cinematic, or quiet and product-focused?")
+    if "Pricing" in page_structure["sections"]:
+        questions.append("Should pricing cards feel calm and trustworthy, or more high-conversion and attention-grabbing?")
+    if "Logos" in page_structure["sections"]:
+        questions.append("Should partner or client logos stay subtle, or should they get motion emphasis as social proof?")
+    if "Form" in page_structure["sections"]:
+        questions.append("Should forms use only subtle focus polish, or do you want stronger field and success-state motion?")
+    if "Data visualization" in page_structure["patterns"]:
+        questions.append("Should charts and metrics animate softly for readability, or should they feel more dramatic and presentational?")
+    if "Sidebar or drawer" in page_structure["patterns"]:
+        questions.append("Do sidebars and drawers need utility-first motion, or should they feel more premium and layered?")
     if "3D or canvas surface" in page_structure["patterns"]:
         questions.append("Should 3D moments be decorative only, or are they core to the story and worth heavier engineering?")
     if mode == "gsap-refactor" and "GSAP" not in motion_stack:
@@ -50,8 +60,18 @@ def build_recommendations(discovery: dict, mode: str):
         recommendations.append("Use count-up animation only when the stats enter view and only once.")
     if "Navigation" in page_structure["sections"]:
         recommendations.append("Consider a subtle navbar polish on scroll rather than a dramatic transformation.")
+    if "Pricing" in page_structure["sections"]:
+        recommendations.append("Use restrained pricing-card emphasis so the CTA hierarchy stays clear without making the section feel gimmicky.")
+    if "Logos" in page_structure["sections"]:
+        recommendations.append("Keep logo motion understated and credibility-focused rather than attention-seeking.")
+    if "Form" in page_structure["sections"]:
+        recommendations.append("Use state-based form polish like focus, validation, and success transitions instead of theatrical entrance effects.")
     if "Showcase" in page_structure["sections"]:
         recommendations.append("Reserve marquee, parallax, or layered depth for a showcase section instead of distributing spectacle everywhere.")
+    if "Data visualization" in page_structure["patterns"]:
+        recommendations.append("Animate charts and dashboards for clarity first, spectacle second.")
+    if "Search and filtering" in page_structure["patterns"]:
+        recommendations.append("Use fast, low-friction transitions for search and filter changes so the UI stays responsive.")
     if "3D or canvas surface" in page_structure["patterns"]:
         recommendations.append("Keep 3D and depth moments focused to one section with strong mobile fallbacks.")
 

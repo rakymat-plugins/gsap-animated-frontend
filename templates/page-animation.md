@@ -52,6 +52,11 @@
 
 - Pending discovery
 
+## Scenario Notes
+
+- Inferred Product Type:
+- Motion Constraints:
+
 ## Phase Status
 
 | Phase | Section | Recipe | Status | Notes |

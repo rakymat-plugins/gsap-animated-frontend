@@ -26,7 +26,9 @@ if str(SCRIPT_PATH) not in sys.path:
 
 from brand_extractor import extract_brand_signals
 from interview_generator import build_interview_questions, build_recommendations
+from interview_strategy import build_interview_brief
 from phase_planner import build_phases
+from project_intelligence import build_project_intelligence
 from structure_search import detect_routes, discover_page_structure
 
 if sys.platform == "win32":
@@ -56,6 +58,13 @@ MOTION_LIB_PATTERNS = {
     "Framer Motion": r"framer-motion|motion\.",
     "Lenis": r"\bLenis\b",
     "AOS": r"\baos\b",
+    "Anime.js": r"animejs|anime\(",
+    "Motion One": r"motion-one|@motionone|animate\(",
+    "Lottie": r"lottie|bodymovin",
+    "React Spring": r"react-spring|useSpring|useTrail",
+    "Three.js": r"\bthree\b|@react-three|fiber",
+    "Locomotive Scroll": r"locomotive-scroll",
+    "Barba.js": r"barba",
 }
 
 
@@ -89,7 +98,19 @@ def load_package_json(directory: Path):
 
 def find_candidate_apps(root: Path):
     candidates = [root]
-    for rel in ("apps/web", "frontend", "client", "app"):
+    for rel in (
+        "apps/web",
+        "apps/site",
+        "apps/frontend",
+        "frontend",
+        "client",
+        "web",
+        "site",
+        "app",
+        "src",
+        "packages/ui",
+        "packages/web",
+    ):
         candidate = root / rel
         if candidate.exists():
             candidates.append(candidate)
@@ -154,11 +175,29 @@ def collect_packages(root: Path):
 def get_scan_roots(root: Path):
     preferred = [
         root / "apps" / "web" / "src",
+        root / "apps" / "web" / "app",
+        root / "apps" / "web" / "pages",
+        root / "apps" / "site" / "src",
+        root / "apps" / "site" / "app",
+        root / "apps" / "frontend" / "src",
+        root / "frontend" / "src",
+        root / "frontend" / "app",
+        root / "client" / "src",
+        root / "web" / "src",
+        root / "site" / "src",
         root / "src",
         root / "app",
         root / "pages",
         root / "components",
+        root / "sections",
+        root / "layouts",
+        root / "widgets",
+        root / "features",
+        root / "modules",
+        root / "lib",
+        root / "content",
         root / "packages" / "ui" / "src",
+        root / "packages" / "web" / "src",
     ]
     roots = [path for path in preferred if path.exists()]
     return roots or [root]
@@ -268,11 +307,26 @@ def package_summary(packages: dict):
         "framer-motion",
         "lenis",
         "three",
+        "@react-three/fiber",
+        "lottie-web",
+        "animejs",
+        "locomotive-scroll",
+        "react-spring",
         "typescript",
     ]:
         if name in packages:
             interesting.append(f"{name}@{packages[name]}")
     return interesting
+
+
+def infrastructure_lines(discovery: dict) -> list[str]:
+    infrastructure = discovery["project_intelligence"]["infrastructure"]
+    if not infrastructure:
+        return ["  - None strongly inferred"]
+    lines = []
+    for label, values in infrastructure.items():
+        lines.append(f"  - {label}: {', '.join(values)}")
+    return lines
 
 
 def infer_page_route(page: str, discovery: dict) -> str:
@@ -304,6 +358,15 @@ def discover_project(root: Path, page: str):
     motion_stack = discover_motion_stack(root)
     design_tokens = extract_brand_signals(root, scan_files, read_text)
     routes = detect_routes(root, get_scan_roots)
+    project_intelligence = build_project_intelligence(
+        {
+            "packages": packages,
+            "page_structure": page_structure,
+            "motion_stack": motion_stack,
+            "design_tokens": design_tokens,
+            "routes": routes,
+        }
+    )
 
     return {
         "root": root,
@@ -314,6 +377,7 @@ def discover_project(root: Path, page: str):
         "page_structure": page_structure,
         "motion_stack": motion_stack,
         "design_tokens": design_tokens,
+        "project_intelligence": project_intelligence,
     }
 
 
@@ -341,7 +405,7 @@ def write_phase_files(root: Path, page: str, phases: list[dict]):
     return created
 
 
-def update_animation_spec(root: Path, page: str, discovery: dict, questions: list[str], phases: list[dict], mode: str):
+def update_animation_spec(root: Path, page: str, discovery: dict, questions: list[str], phases: list[dict], mode: str, interview_brief: dict):
     spec_path = root / ".gsap" / "animation-spec.md"
     content = read_text(spec_path)
 
@@ -376,12 +440,35 @@ def update_animation_spec(root: Path, page: str, discovery: dict, questions: lis
             *[f"  - {item}" for item in (discovery['design_tokens']['css_vars'] or ['None detected'])],
             "- Visual Direction:",
             *[f"  - {item}" for item in (discovery['design_tokens']['visual_direction'] or ['Not inferred yet'])],
+            f"- Blur Usage Signals: {discovery['design_tokens']['blur_usage']}",
+            f"- Backdrop Filter Signals: {discovery['design_tokens']['backdrop_usage']}",
         ],
     )
     content = replace_or_append_section(
         content,
         "Questions To Resolve",
-        [f"- {question}" for question in questions] or ["- No blocking discovery questions right now."],
+        [f"- {question}" for question in interview_brief["priority_questions"]] or ["- No blocking discovery questions right now."],
+    )
+    content = replace_or_append_section(
+        content,
+        "Project Intelligence",
+        [
+            f"- Inferred Archetypes: {', '.join(discovery['project_intelligence']['archetypes'])}",
+            "- Supporting Infrastructure:",
+            *infrastructure_lines(discovery),
+            "- Project Constraints:",
+            *[f"  - {item}" for item in discovery["project_intelligence"]["constraints"]],
+        ],
+    )
+    content = replace_or_append_section(
+        content,
+        "Interview Strategy",
+        [
+            f"- Interview Mode: {interview_brief['interview_mode']}",
+            f"- Priority Categories: {', '.join(interview_brief['categories']) if interview_brief['categories'] else 'None'}",
+            "- Priority Questions:",
+            *[f"  - {item}" for item in interview_brief["priority_questions"]],
+        ],
     )
     content = replace_or_append_section(
         content,
@@ -396,7 +483,7 @@ def update_animation_spec(root: Path, page: str, discovery: dict, questions: lis
     write_text(spec_path, content)
 
 
-def update_page_artifact(root: Path, page: str, discovery: dict, mode: str, questions: list[str], recommendations: list[str], phases: list[dict]):
+def update_page_artifact(root: Path, page: str, discovery: dict, mode: str, questions: list[str], recommendations: list[str], phases: list[dict], interview_brief: dict):
     page_slug = slugify(page)
     page_path = root / ".gsap" / "pages" / f"{page_slug}.animation.md"
     content = read_text(page_path)
@@ -415,6 +502,7 @@ def update_page_artifact(root: Path, page: str, discovery: dict, mode: str, ques
             f"- Sections Detected: {', '.join(page_structure['sections']) if page_structure['sections'] else 'No obvious section types detected'}",
             f"- Repeated Components: {', '.join(page_structure['repeated_components']) if page_structure['repeated_components'] else 'None detected'}",
             f"- Structure Patterns: {', '.join(page_structure['patterns']) if page_structure['patterns'] else 'No strong patterns inferred'}",
+            f"- Selector Samples: {', '.join(page_structure['selector_keywords'][:8]) if page_structure['selector_keywords'] else 'None detected'}",
         ],
     )
     content = replace_or_append_section(
@@ -422,7 +510,7 @@ def update_page_artifact(root: Path, page: str, discovery: dict, mode: str, ques
         "Resume State",
         [
             f"- Next Agent Action: open phase {active_phase} and implement only that section.",
-            f"- Blocking Questions: {' | '.join(questions) if questions else 'None from auto-discovery'}",
+            f"- Blocking Questions: {' | '.join(interview_brief['priority_questions']) if interview_brief['priority_questions'] else 'None from auto-discovery'}",
             "- Discovery Confidence: Medium unless the agent verifies source files manually.",
             f"- Active Phase: {active_phase}",
         ],
@@ -431,6 +519,15 @@ def update_page_artifact(root: Path, page: str, discovery: dict, mode: str, ques
         content,
         "Recommended Motion Directions",
         [f"- {item}" for item in recommendations] or ["- Manual motion direction needed."],
+    )
+    content = replace_or_append_section(
+        content,
+        "Scenario Notes",
+        [
+            f"- Inferred Product Type: {', '.join(discovery['project_intelligence']['archetypes'])}",
+            "- Motion Constraints:",
+            *[f"  - {item}" for item in discovery["project_intelligence"]["constraints"]],
+        ],
     )
     phase_rows = [
         [phase["id"], phase["section"], phase["recipe"], phase["status"], phase["objective"]]
@@ -444,7 +541,7 @@ def update_page_artifact(root: Path, page: str, discovery: dict, mode: str, ques
     write_text(page_path, content)
 
 
-def update_plan_artifact(root: Path, page: str, discovery: dict, mode: str, questions: list[str], recommendations: list[str], phases: list[dict]):
+def update_plan_artifact(root: Path, page: str, discovery: dict, mode: str, questions: list[str], recommendations: list[str], phases: list[dict], interview_brief: dict):
     plan_path = root / ".gsap" / "animation-plan.md"
     content = read_text(plan_path)
     page_slug = slugify(page)
@@ -464,6 +561,7 @@ def update_plan_artifact(root: Path, page: str, discovery: dict, mode: str, ques
             f"- Package Manager: {discovery['package_manager']}",
             f"- Existing Motion Stack: {', '.join(discovery['motion_stack'].keys()) if discovery['motion_stack'] else 'No motion libraries detected'}",
             f"- Matched Files: {', '.join(file.name for file in page_structure['page_files'][:8]) if page_structure['page_files'] else 'No direct matches'}",
+            f"- Inferred Product Type: {', '.join(discovery['project_intelligence']['archetypes'])}",
         ],
     )
     content = replace_or_append_section(
@@ -495,10 +593,14 @@ def update_plan_artifact(root: Path, page: str, discovery: dict, mode: str, ques
         [
             f"- Sections: {', '.join(page_structure['sections']) if page_structure['sections'] else 'Not inferred'}",
             f"- Structure Patterns: {', '.join(page_structure['patterns']) if page_structure['patterns'] else 'Not inferred'}",
+            f"- Selector Samples: {', '.join(page_structure['selector_keywords'][:10]) if page_structure['selector_keywords'] else 'None detected'}",
+            f"- Infrastructure: {', '.join(discovery['project_intelligence']['infrastructure'].keys()) if discovery['project_intelligence']['infrastructure'] else 'None strongly inferred'}",
             "- Recommendations:",
             *[f"  - {item}" for item in recommendations],
             "- Open Questions:",
-            *[f"  - {item}" for item in (questions or ['None from auto-discovery'])],
+            *[f"  - {item}" for item in (interview_brief["priority_questions"] or ['None from auto-discovery'])],
+            "- Constraints:",
+            *[f"  - {item}" for item in discovery["project_intelligence"]["constraints"]],
         ],
     )
     write_text(plan_path, content)
@@ -531,7 +633,7 @@ def update_tasks_artifact(root: Path, page: str, phases: list[dict]):
     write_text(tasks_path, content)
 
 
-def update_audit_artifact(root: Path, page: str, discovery: dict, questions: list[str], recommendations: list[str], phases: list[dict]):
+def update_audit_artifact(root: Path, page: str, discovery: dict, questions: list[str], recommendations: list[str], phases: list[dict], interview_brief: dict):
     audit_path = root / ".gsap" / "audit-report.md"
     content = read_text(audit_path)
     page_slug = slugify(page)
@@ -563,7 +665,9 @@ def update_audit_artifact(root: Path, page: str, discovery: dict, questions: lis
             "- Recommended Improvements:",
             *[f"  - {item}" for item in recommendations],
             "- Open Questions:",
-            *[f"  - {item}" for item in (questions or ['None from auto-discovery'])],
+            *[f"  - {item}" for item in (interview_brief["priority_questions"] or ['None from auto-discovery'])],
+            "- Constraints:",
+            *[f"  - {item}" for item in discovery["project_intelligence"]["constraints"]],
         ],
     )
     write_text(audit_path, content)
@@ -589,16 +693,17 @@ def orchestrate(mode: str, path: str, page: str, project_name: str | None):
     created = ensure_workspace(root, page, project_name)
     discovery = discover_project(root, page)
     questions = build_interview_questions(discovery, mode)
+    interview_brief = build_interview_brief(questions, discovery, mode)
     recommendations = build_recommendations(discovery, mode)
     phases = build_phases(page, discovery, mode)
     created.extend(write_phase_files(root, page, phases))
 
-    update_animation_spec(root, page, discovery, questions, phases, mode)
-    update_page_artifact(root, page, discovery, mode, questions, recommendations, phases)
-    update_plan_artifact(root, page, discovery, mode, questions, recommendations, phases)
+    update_animation_spec(root, page, discovery, questions, phases, mode, interview_brief)
+    update_page_artifact(root, page, discovery, mode, questions, recommendations, phases, interview_brief)
+    update_plan_artifact(root, page, discovery, mode, questions, recommendations, phases, interview_brief)
     update_tasks_artifact(root, page, phases)
     if mode == "gsap-refactor":
-        update_audit_artifact(root, page, discovery, questions, recommendations, phases)
+        update_audit_artifact(root, page, discovery, questions, recommendations, phases, interview_brief)
 
     console.print(
         Panel(

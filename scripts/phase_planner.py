@@ -12,6 +12,10 @@ SECTION_RECIPES = {
     "Showcase": "parallax showcase or marquee",
     "Timeline": "step-by-step reveal",
     "FAQ": "accordion timing polish",
+    "Pricing": "pricing-card emphasis + trust hierarchy",
+    "Logos": "logo cloud drift + credibility polish",
+    "Team": "profile stagger + soft hover depth",
+    "Form": "field-focus polish + success transitions",
     "CTA": "cta emphasis + magnetic hover",
 }
 
@@ -22,9 +26,11 @@ def default_sections_for_mode(mode: str):
     return ["Hero", "Feature Grid", "Stats", "CTA"]
 
 
-def build_phase_tasks(section: str, mode: str):
+def build_phase_tasks(section: str, mode: str, discovery: dict):
+    project_type = ", ".join(discovery.get("project_intelligence", {}).get("archetypes", [])) or "general product"
     base = [
         f"Inspect the current code and selectors for the {section} section before editing.",
+        f"Align the {section} motion with the inferred product type: {project_type}.",
         f"Document the motion goal, hierarchy, and fallback behavior for {section} in the page artifact.",
         f"Implement the {section} animation with transform/opacity-first properties.",
         f"Verify reduced-motion behavior for {section}.",
@@ -49,7 +55,7 @@ def build_phases(page: str, discovery: dict, mode: str):
                 "recipe": SECTION_RECIPES.get(section, "section-specific reveal and polish"),
                 "status": "Planned",
                 "objective": f"Make the {section} section feel intentional, modern, and aligned with the page hierarchy.",
-                "tasks": build_phase_tasks(section, mode),
+                "tasks": build_phase_tasks(section, mode, discovery),
             }
         )
     return phases

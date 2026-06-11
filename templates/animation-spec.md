@@ -32,6 +32,18 @@
 - Sections needing strongest emphasis:
 - Elements to avoid over-animating:
 
+## Project Intelligence
+
+- Inferred Archetypes:
+- Supporting Infrastructure:
+- Project Constraints:
+
+## Interview Strategy
+
+- Interview Mode:
+- Priority Categories:
+- Priority Questions:
+
 ## Spec-Driven Rules
 
 - Planning must happen before implementation.
