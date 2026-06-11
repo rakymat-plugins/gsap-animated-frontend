@@ -1,0 +1,198 @@
+# GSAP Animated Frontend
+
+<p align="center">
+  <img src="https://raw.githubusercontent.com/yousefabdallah171/gsap-animated-frontend/main/assets/gsap-skill-banner.svg" alt="GSAP Animated Frontend" width="800" />
+</p>
+
+<p align="center">
+  <b>A persistent, recoverable GSAP workflow for coding agents.</b><br/>
+  <sub>Two user-facing commands. Internal helpers. .gsap artifacts as the source of truth.</sub>
+</p>
+
+---
+
+## What This Repo Is
+
+This repo is a GSAP animation skill/workflow package designed to work across coding agents, not only one model.
+
+It is built to work well with:
+
+- Claude Code
+- Codex CLI
+- Cursor
+- Gemini CLI
+- any agent that can follow `SKILL.md`-style instructions
+
+The core design goal is simple:
+
+- only **2 user-facing commands**
+- persistent workflow state in `.gsap/`
+- recoverable progress after interruption
+- internal Python helpers for scanning, artifact generation, and workflow orchestration
+
+---
+
+## The 2 Commands
+
+These are the only primary commands the user should see:
+
+### `gsap-new`
+
+Use for:
+
+- new pages
+- new sections
+- greenfield animation work
+
+What it does:
+
+1. Creates or updates `.gsap` artifacts
+2. Interviews only when required
+3. Generates animation specifications
+4. Generates implementation plan
+5. Applies implementation workflow
+
+### `gsap-refactor`
+
+Use for:
+
+- existing pages/components
+- improving current motion systems
+- cleanup, accessibility, and performance hardening
+
+What it does:
+
+1. Reads existing code
+2. Reads existing `.gsap` artifacts
+3. Audits the current motion system
+4. Generates a refactor plan
+5. Applies safe improvements
+6. Updates artifacts
+
+---
+
+## Persistent State
+
+The workflow state lives in the project being animated, not in chat history.
+
+```text
+your-project/
+└── .gsap/
+    ├── animation-spec.md
+    ├── animation-plan.md
+    ├── audit-report.md
+    └── pages/
+        ├── homepage.animation.md
+        ├── schools.animation.md
+        └── dashboard.animation.md
+```
+
+This means a fresh agent session can resume by reading `.gsap` files without needing prior conversation context.
+
+---
+
+## Architecture
+
+```text
+gsap-animated-frontend/
+├── SKILL.md
+├── gsap_cli.py
+├── requirements.txt
+├── scripts/
+│   └── gsap_workflow.py
+├── subskills/
+│   ├── gsap-new/
+│   │   └── SKILL.md
+│   └── gsap-refactor/
+│       └── SKILL.md
+├── templates/
+│   ├── animation-spec.md
+│   ├── animation-plan.md
+│   ├── audit-report.md
+│   └── page-animation.md
+├── references/
+│   ├── animation-recipes.md
+│   ├── gsap-core-patterns.md
+│   ├── performance-guide.md
+│   └── scroll-trigger-patterns.md
+└── assets/
+    └── gsap-skill-banner.svg
+```
+
+### Design Rules
+
+- `SKILL.md` is the root router
+- `subskills/gsap-new` and `subskills/gsap-refactor` are the only public workflows
+- `scripts/gsap_workflow.py` handles internal orchestration
+- `templates/` creates the persistent `.gsap` state
+- `references/` holds optional detailed guidance
+
+---
+
+## Internal Helpers
+
+The system may use internal script commands such as:
+
+- artifact bootstrap
+- workflow state updates
+- code inspection
+- motion audit prep
+- refactor plan preparation
+
+These are internal implementation helpers, not part of the intended public UX.
+
+The public UX stays centered on:
+
+- `gsap-new`
+- `gsap-refactor`
+
+---
+
+## Installation
+
+### Clone as a skill package
+
+```bash
+git clone https://github.com/yousefabdallah171/gsap-animated-frontend.git
+```
+
+### Install Python dependencies
+
+```bash
+cd gsap-animated-frontend
+pip install -r requirements.txt
+```
+
+---
+
+## Usage
+
+### New animation work
+
+```bash
+python gsap_cli.py gsap-new --path "<project-path>" --page "homepage"
+```
+
+### Refactor existing animation work
+
+```bash
+python gsap_cli.py gsap-refactor --path "<project-path>" --page "homepage"
+```
+
+---
+
+## Philosophy
+
+This repo is optimized around:
+
+- purposeful motion, not random effects
+- recoverable workflows, not chat-only memory
+- simple UX, not command overload
+- cross-agent compatibility, not one-tool lock-in
+- persistent artifacts, not fragile context
+
+---
+
+## License
+
+MIT
