@@ -150,11 +150,37 @@ The public UX stays centered on:
 
 ## Installation
 
+### Install via skills.sh CLI
+
+The official `skills.sh` docs recommend installing skills from your project root with:
+
+```bash
+npx skills add yousefabdallah171/gsap-animated-frontend
+```
+
+This is the best cross-agent install path for:
+
+- Claude Code
+- Codex
+- Gemini
+- Cursor
+- other agents that support repo-scoped `SKILL.md` discovery
+
+After installation, start a new agent session in that project so the skill files are picked up.
+
+### Agent Notes
+
+- Claude Code: run `npx skills add yousefabdallah171/gsap-animated-frontend` from the project root, then start a new Claude Code session.
+- Codex: run `npx skills add yousefabdallah171/gsap-animated-frontend` from the project root, then start a new Codex session.
+- Gemini: run `npx skills add yousefabdallah171/gsap-animated-frontend` from the project root, then start a new Gemini session.
+
 ### Clone as a skill package
 
 ```bash
 git clone https://github.com/yousefabdallah171/gsap-animated-frontend.git
 ```
+
+This manual clone option is still useful when you want to inspect or customize the skill package directly.
 
 ### Install Python dependencies
 
@@ -167,6 +193,14 @@ pip install -r requirements.txt
 
 ## Usage
 
+### Install into a project with skills.sh
+
+```bash
+npx skills add yousefabdallah171/gsap-animated-frontend
+```
+
+Then restart your agent session in that project.
+
 ### New animation work
 
 ```bash
@@ -178,6 +212,13 @@ python gsap_cli.py gsap-new --path "<project-path>" --page "homepage"
 ```bash
 python gsap_cli.py gsap-refactor --path "<project-path>" --page "homepage"
 ```
+
+### What the install command does
+
+The `skills` CLI installs the skill files into your repository so agents can reference `SKILL.md` and related files across sessions. This repo keeps the public workflow centered on:
+
+- `gsap-new`
+- `gsap-refactor`
 
 ---
 
