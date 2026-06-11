@@ -61,3 +61,4 @@ Use references only as needed:
 3. Read current code before planning refactors.
 4. Include reduced-motion and mobile downgrade rules in every plan.
 5. Keep helper commands internal; the visible experience stays centered on `gsap-new` and `gsap-refactor`.
+6. Let the workflow script inspect framework, packages, page structure, design signals, and existing motion before asking questions.

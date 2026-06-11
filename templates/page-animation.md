@@ -2,14 +2,15 @@
 
 ## Page
 
-- Route:
+- Page Route:
 - Source File:
-- Status: Draft
+- Page Status: Draft
 
 ## Resume State
 
 - Next Agent Action:
 - Blocking Questions:
+- Discovery Confidence:
 
 ## Sections
 
@@ -45,3 +46,7 @@
 ## Reduced Motion
 
 - Fallback Behavior:
+
+## Recommended Motion Directions
+
+- Pending discovery

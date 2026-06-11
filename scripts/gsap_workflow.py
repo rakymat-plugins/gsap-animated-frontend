@@ -7,6 +7,7 @@ import json
 import os
 import re
 import sys
+from collections import Counter
 from pathlib import Path
 
 try:
@@ -28,8 +29,36 @@ console = Console(force_terminal=True)
 SCRIPT_DIR = Path(__file__).resolve().parent.parent
 TEMPLATES_DIR = SCRIPT_DIR / "templates"
 SOURCE_EXTENSIONS = (".tsx", ".ts", ".jsx", ".js", ".vue", ".svelte")
-SKIP_DIRS = {"node_modules", ".next", "dist", ".git", ".pnpm", "__pycache__", ".turbo", "build", "coverage"}
+STYLE_EXTENSIONS = (".css", ".scss", ".sass", ".less")
+SKIP_DIRS = {
+    "node_modules",
+    ".next",
+    "dist",
+    ".git",
+    ".pnpm",
+    "__pycache__",
+    ".turbo",
+    "build",
+    "coverage",
+}
 ANIMATION_CONFIG_FILE = "gsap-animations.yaml"
+SECTION_PATTERNS = {
+    "Hero": ("hero", "banner", "masthead"),
+    "Navigation": ("navbar", "topbar", "header", "nav"),
+    "Cards": ("card", "grid", "listing", "gallery"),
+    "Stats": ("stats", "stat", "metric", "count"),
+    "Testimonials": ("testimonial", "review", "quote"),
+    "CTA": ("cta", "call-to-action", "footer", "contact"),
+}
+MOTION_LIB_PATTERNS = {
+    "GSAP": r"gsap|ScrollTrigger|useGSAP",
+    "Framer Motion": r"framer-motion|motion\.",
+    "Lenis": r"\bLenis\b",
+    "AOS": r"\baos\b",
+}
+COLOR_PATTERN = re.compile(
+    r"(#(?:[0-9a-fA-F]{3,8})\b|rgba?\([^)]+\)|hsla?\([^)]+\)|oklch\([^)]+\)|oklab\([^)]+\))"
+)
 
 
 def find_project_root(start_path=".") -> Path:
@@ -41,17 +70,47 @@ def find_project_root(start_path=".") -> Path:
     return Path(start_path).resolve()
 
 
+def read_text(path: Path) -> str:
+    return path.read_text(encoding="utf-8", errors="ignore") if path.exists() else ""
+
+
+def write_text(path: Path, content: str):
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(content, encoding="utf-8")
+
+
+def load_package_json(directory: Path):
+    package_file = directory / "package.json"
+    if not package_file.exists():
+        return None
+    try:
+        return json.loads(package_file.read_text(encoding="utf-8"))
+    except Exception:
+        return None
+
+
+def find_candidate_apps(root: Path):
+    candidates = [root]
+    for rel in ("apps/web", "frontend", "client", "app"):
+        candidate = root / rel
+        if candidate.exists():
+            candidates.append(candidate)
+    unique = []
+    for item in candidates:
+        if item not in unique:
+            unique.append(item)
+    return unique
+
+
 def detect_framework(root: Path) -> str:
-    candidates = [root, root / "apps" / "web", root / "frontend", root / "client"]
-    for candidate in candidates:
-        package_file = candidate / "package.json"
-        if not package_file.exists():
+    for candidate in find_candidate_apps(root):
+        package_data = load_package_json(candidate)
+        if not package_data:
             continue
-        try:
-            data = json.loads(package_file.read_text(encoding="utf-8"))
-        except Exception:
-            continue
-        deps = {**data.get("dependencies", {}), **data.get("devDependencies", {})}
+        deps = {
+            **package_data.get("dependencies", {}),
+            **package_data.get("devDependencies", {}),
+        }
         if "next" in deps:
             return "next"
         if "react" in deps or "react-dom" in deps:
@@ -61,6 +120,37 @@ def detect_framework(root: Path) -> str:
         if "svelte" in deps:
             return "svelte"
     return "vanilla"
+
+
+def detect_package_manager(root: Path) -> str:
+    if (root / "pnpm-lock.yaml").exists():
+        return "pnpm"
+    if (root / "yarn.lock").exists():
+        return "yarn"
+    if (root / "bun.lockb").exists():
+        return "bun"
+    return "npm"
+
+
+def collect_packages(root: Path):
+    package_data = load_package_json(root) or {}
+    deps = {
+        **package_data.get("dependencies", {}),
+        **package_data.get("devDependencies", {}),
+    }
+    if deps:
+        return deps
+
+    for candidate in find_candidate_apps(root):
+        package_data = load_package_json(candidate)
+        if package_data:
+            deps = {
+                **package_data.get("dependencies", {}),
+                **package_data.get("devDependencies", {}),
+            }
+            if deps:
+                return deps
+    return {}
 
 
 def get_scan_roots(root: Path):
@@ -76,8 +166,11 @@ def get_scan_roots(root: Path):
     return roots or [root]
 
 
-def scan_files(root: Path):
+def scan_files(root: Path, include_styles=False):
     files = []
+    extensions = set(SOURCE_EXTENSIONS)
+    if include_styles:
+        extensions.update(STYLE_EXTENSIONS)
 
     def walk(directory: Path):
         try:
@@ -85,7 +178,7 @@ def scan_files(root: Path):
                 if entry.is_dir():
                     if entry.name not in SKIP_DIRS:
                         walk(entry)
-                elif entry.suffix in SOURCE_EXTENSIONS:
+                elif entry.suffix in extensions:
                     files.append(entry)
         except (PermissionError, OSError):
             return
@@ -129,143 +222,422 @@ def ensure_workspace(root: Path, page: str, project_name: str | None = None):
     return created
 
 
-def read_text(path: Path) -> str:
-    return path.read_text(encoding="utf-8", errors="ignore") if path.exists() else ""
-
-
-def write_text(path: Path, content: str):
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(content, encoding="utf-8")
+def replace_or_append_section(content: str, heading: str, lines: list[str]) -> str:
+    block = f"## {heading}\n\n" + "\n".join(lines).rstrip() + "\n"
+    pattern = rf"\n## {re.escape(heading)}\n.*?(?=\n## |\Z)"
+    if re.search(pattern, content, flags=re.S):
+        return re.sub(pattern, "\n" + block, content, flags=re.S)
+    content = content.rstrip() + "\n\n" + block
+    return content
 
 
 def set_field(content: str, label: str, value: str) -> str:
-    pattern = rf"(^- {re.escape(label)}:\s*).*$"
-    if re.search(pattern, content, flags=re.MULTILINE):
-        return re.sub(pattern, rf"\1{value}", content, flags=re.MULTILINE)
-    return content + f"\n- {label}: {value}\n"
+    lines = content.splitlines()
+    updated = False
+    target_prefix = f"- {label}:"
+    for index, line in enumerate(lines):
+        if line.startswith(target_prefix):
+            lines[index] = f"{target_prefix} {value}"
+            updated = True
+            break
+    if not updated:
+        lines.append(f"- {label}: {value}")
+    return "\n".join(lines) + ("\n" if content.endswith("\n") or not lines[-1].endswith("\n") else "")
 
 
-def append_section(path: Path, heading: str, lines: list[str]):
-    content = read_text(path).rstrip() + "\n\n"
-    content += f"## {heading}\n\n"
-    content += "\n".join(lines).rstrip() + "\n"
-    write_text(path, content)
-
-
-def summarize_usage(content: str):
-    return {
-        "gsap_calls": len(re.findall(r"gsap\.(to|from|fromTo|timeline|set)\s*\(", content)),
-        "scroll_trigger": "ScrollTrigger" in content,
-        "use_gsap": "useGSAP" in content,
-        "reduced_motion": "prefers-reduced-motion" in content or "matchMedia" in content,
-        "lenis": "Lenis" in content,
-    }
-
-
-def scan_opportunities(root: Path, page: str):
-    opportunities = []
-    page_token = slugify(page).replace("-", "")
-    for source_file in scan_files(root):
-        content = read_text(source_file)
-        lower = content.lower()
-        if page_token and page_token not in source_file.as_posix().lower() and page_token not in lower:
-            continue
-        if any(token in lower for token in ("hero", "banner")) and "gsap" not in lower:
-            opportunities.append("Hero can use a staged text reveal.")
-        if ("map(" in content or ".map(" in content) and any(token in lower for token in ("card", "grid", "listing")):
-            opportunities.append("Repeated cards are a good fit for batched stagger reveals.")
-        if any(token in lower for token in ("stat", "metric", "count")):
-            opportunities.append("Stats can use count-up motion if they are visible on entry.")
-        if any(token in lower for token in ("navbar", "header", "topbar")) and "scroll" not in lower:
-            opportunities.append("Navigation may benefit from a subtle shrink-on-scroll state.")
+def detect_routes(root: Path):
+    routes = []
+    for scan_root in get_scan_roots(root):
+        for candidate in scan_root.rglob("page.tsx"):
+            rel = candidate.relative_to(scan_root).as_posix()
+            route = "/" + rel.replace("/page.tsx", "").replace("page.tsx", "").strip("/")
+            routes.append(route or "/")
+        for candidate in scan_root.rglob("page.jsx"):
+            rel = candidate.relative_to(scan_root).as_posix()
+            route = "/" + rel.replace("/page.jsx", "").replace("page.jsx", "").strip("/")
+            routes.append(route or "/")
     deduped = []
-    for item in opportunities:
-        if item not in deduped:
-            deduped.append(item)
-    return deduped[:8]
+    for route in routes:
+        if route not in deduped:
+            deduped.append(route)
+    return deduped[:30]
+
+
+def infer_sections_from_content(content: str):
+    found = []
+    lower = content.lower()
+    for section_name, tokens in SECTION_PATTERNS.items():
+        if any(token in lower for token in tokens):
+            found.append(section_name)
+    return found
 
 
 def find_page_files(root: Path, page: str):
     token = slugify(page)
     matches = []
-    for source_file in scan_files(root):
+    source_files = scan_files(root)
+    for source_file in source_files:
         path_lower = source_file.as_posix().lower()
-        if token in path_lower:
+        content_lower = read_text(source_file).lower()
+        if token in path_lower or token.replace("-", "") in content_lower:
             matches.append(source_file)
-    return matches[:12]
+    if not matches and token in {"home", "homepage", "landing", "index"}:
+        for source_file in source_files:
+            path_lower = source_file.as_posix().lower()
+            if path_lower.endswith("/page.tsx") or path_lower.endswith("/page.jsx") or path_lower.endswith("/index.tsx"):
+                matches.append(source_file)
+    return matches[:20]
 
 
-def write_new_workflow_state(root: Path, page: str):
-    page_slug = slugify(page)
+def discover_page_structure(root: Path, page: str):
+    page_files = find_page_files(root, page)
+    sections = []
+    repeated_components = []
+    if not page_files:
+        return {
+            "page_files": [],
+            "sections": [],
+            "repeated_components": [],
+            "source_file": "",
+        }
+
+    for source_file in page_files:
+        content = read_text(source_file)
+        sections.extend(infer_sections_from_content(content))
+        if ".map(" in content or "map(" in content:
+            repeated_components.append(source_file.name)
+
+    deduped_sections = []
+    for section in sections:
+        if section not in deduped_sections:
+            deduped_sections.append(section)
+
+    return {
+        "page_files": page_files,
+        "sections": deduped_sections,
+        "repeated_components": repeated_components[:8],
+        "source_file": page_files[0].as_posix() if page_files else "",
+    }
+
+
+def discover_motion_stack(root: Path):
+    files = scan_files(root)
+    counts = Counter()
+    for source_file in files:
+        content = read_text(source_file)
+        for name, pattern in MOTION_LIB_PATTERNS.items():
+            if re.search(pattern, content, flags=re.I):
+                counts[name] += 1
+    return counts
+
+
+def extract_design_tokens(root: Path):
+    colors = Counter()
+    fonts = Counter()
+    css_vars = Counter()
+    tone_hints = Counter()
+
+    candidate_files = []
+    for path in [
+        root / "tailwind.config.ts",
+        root / "tailwind.config.js",
+        root / "apps" / "web" / "tailwind.config.ts",
+        root / "apps" / "web" / "tailwind.config.js",
+        root / "src" / "app" / "globals.css",
+        root / "apps" / "web" / "src" / "app" / "globals.css",
+    ]:
+        if path.exists():
+            candidate_files.append(path)
+
+    candidate_files.extend(scan_files(root, include_styles=True)[:40])
+
+    for source_file in candidate_files:
+        content = read_text(source_file)
+        for color in COLOR_PATTERN.findall(content):
+            colors[color] += 1
+        for font_match in re.findall(r"font-family\s*:\s*([^;]+);", content, flags=re.I):
+            fonts[font_match.strip()] += 1
+        for var_match in re.findall(r"(--[A-Za-z0-9-_]+)\s*:", content):
+            css_vars[var_match] += 1
+        for hint in ("luxury", "premium", "playful", "editorial", "booking", "dashboard", "minimal"):
+            if hint in content.lower():
+                tone_hints[hint] += 1
+
+    return {
+        "colors": [item for item, _ in colors.most_common(8)],
+        "fonts": [item for item, _ in fonts.most_common(4)],
+        "css_vars": [item for item, _ in css_vars.most_common(8)],
+        "tone_hints": [item for item, _ in tone_hints.most_common(6)],
+    }
+
+
+def discover_project(root: Path, page: str):
+    packages = collect_packages(root)
+    page_structure = discover_page_structure(root, page)
+    motion_stack = discover_motion_stack(root)
+    design_tokens = extract_design_tokens(root)
+    routes = detect_routes(root)
+
+    return {
+        "root": root,
+        "framework": detect_framework(root),
+        "package_manager": detect_package_manager(root),
+        "packages": packages,
+        "routes": routes,
+        "page_structure": page_structure,
+        "motion_stack": motion_stack,
+        "design_tokens": design_tokens,
+    }
+
+
+def infer_questions(discovery: dict, mode: str):
+    questions = []
+    page_structure = discovery["page_structure"]
+    motion_stack = discovery["motion_stack"]
+    design_tokens = discovery["design_tokens"]
+    packages = discovery["packages"]
+
+    if not page_structure["sections"]:
+        questions.append("Which sections on this page matter most for motion hierarchy?")
+    if "GSAP" not in motion_stack and "gsap" not in packages:
+        questions.append("Should this workflow install GSAP in the project, or is motion planning only needed for now?")
+    if "Lenis" not in motion_stack and "lenis" not in packages:
+        questions.append("Do you want smooth scrolling like Lenis, or should we stay with native scroll?")
+    if not design_tokens["colors"]:
+        questions.append("What brand colors or visual references should motion respect?")
+    if "Cards" in page_structure["sections"]:
+        questions.append("Should repeated cards all share one reveal pattern, or should featured cards behave differently?")
+    if mode == "gsap-refactor" and "GSAP" not in motion_stack:
+        questions.append("This page does not appear to use GSAP yet. Should the refactor introduce GSAP or only improve existing native/CSS motion?")
+    if mode == "gsap-refactor" and not any(key in motion_stack for key in ("GSAP", "Framer Motion")):
+        questions.append("What current motion feels wrong: too static, too noisy, too slow, or inconsistent?")
+
+    deduped = []
+    for item in questions:
+        if item not in deduped:
+            deduped.append(item)
+    return deduped[:6]
+
+
+def infer_recommendations(discovery: dict, mode: str):
+    page_structure = discovery["page_structure"]
+    recommendations = []
+    if "Hero" in page_structure["sections"]:
+        recommendations.append("Use a staged hero reveal for above-the-fold hierarchy.")
+    if "Cards" in page_structure["sections"]:
+        recommendations.append("Use batched stagger reveals for repeated cards or grids.")
+    if "Stats" in page_structure["sections"]:
+        recommendations.append("Use count-up motion only when the section first becomes visible.")
+    if "Navigation" in page_structure["sections"]:
+        recommendations.append("Consider a subtle shrink-on-scroll or backdrop polish for navigation.")
+    if mode == "gsap-refactor":
+        recommendations.append("Preserve good motion and remove noisy, duplicated, or mobile-heavy effects first.")
+        recommendations.append("Add reduced-motion handling before adding more spectacle.")
+    else:
+        recommendations.append("Define mobile simplifications and reduced-motion fallbacks before implementation.")
+
+    deduped = []
+    for item in recommendations:
+        if item not in deduped:
+            deduped.append(item)
+    return deduped[:8]
+
+
+def package_summary(packages: dict):
+    interesting = []
+    for name in [
+        "gsap",
+        "@gsap/react",
+        "next",
+        "react",
+        "tailwindcss",
+        "framer-motion",
+        "lenis",
+        "typescript",
+    ]:
+        if name in packages:
+            interesting.append(f"{name}@{packages[name]}")
+    return interesting
+
+
+def update_animation_spec(root: Path, page: str, discovery: dict, questions: list[str]):
     spec_path = root / ".gsap" / "animation-spec.md"
-    plan_path = root / ".gsap" / "animation-plan.md"
+    content = read_text(spec_path)
+
+    framework_line = f"- Framework: {discovery['framework']}"
+    package_manager_line = f"- Package Manager: {discovery['package_manager']}"
+    package_lines = package_summary(discovery["packages"]) or ["No notable frontend packages detected."]
+    color_lines = discovery["design_tokens"]["colors"] or ["No color tokens detected yet."]
+    font_lines = discovery["design_tokens"]["fonts"] or ["No font tokens detected yet."]
+
+    content = replace_or_append_section(
+        content,
+        "Discovery Snapshot",
+        [
+            framework_line,
+            package_manager_line,
+            "- Packages:",
+            *[f"  - {item}" for item in package_lines],
+            f"- Routes Detected: {', '.join(discovery['routes'][:10]) if discovery['routes'] else 'None detected'}",
+        ],
+    )
+    content = replace_or_append_section(
+        content,
+        "Brand And Design Signals",
+        [
+            "- Colors:",
+            *[f"  - {item}" for item in color_lines],
+            "- Fonts:",
+            *[f"  - {item}" for item in font_lines],
+            "- CSS Variables:",
+            *[f"  - {item}" for item in (discovery['design_tokens']['css_vars'] or ['None detected'])],
+        ],
+    )
+    content = replace_or_append_section(
+        content,
+        "Questions To Resolve",
+        [f"- {question}" for question in questions] or ["- No blocking discovery questions right now."],
+    )
+    write_text(spec_path, content)
+
+
+def update_page_artifact(root: Path, page: str, discovery: dict, mode: str, questions: list[str], recommendations: list[str]):
+    page_slug = slugify(page)
     page_path = root / ".gsap" / "pages" / f"{page_slug}.animation.md"
+    content = read_text(page_path)
+    page_structure = discovery["page_structure"]
 
-    page_content = read_text(page_path)
-    page_content = set_field(page_content, "Status", "Needs interview or artifact completion")
-    write_text(page_path, page_content)
+    content = set_field(content, "Page Route", page if page.startswith("/") else f"/{page_slug}")
+    content = set_field(content, "Source File", page_structure["source_file"] or "Manual mapping needed")
+    content = set_field(content, "Page Status", "Needs implementation plan" if mode == "gsap-new" else "Refactor in progress")
+    content = replace_or_append_section(
+        content,
+        "Discovery Snapshot",
+        [
+            f"- Matched Files: {', '.join(file.name for file in page_structure['page_files'][:8]) if page_structure['page_files'] else 'No direct matches found'}",
+            f"- Sections Detected: {', '.join(page_structure['sections']) if page_structure['sections'] else 'No obvious section types detected'}",
+            f"- Repeated Components: {', '.join(page_structure['repeated_components']) if page_structure['repeated_components'] else 'None detected'}",
+        ],
+    )
+    content = replace_or_append_section(
+        content,
+        "Resume State",
+        [
+            "- Next Agent Action: Read discovery sections, resolve any open questions, then implement or refactor.",
+            f"- Blocking Questions: {' | '.join(questions) if questions else 'None from auto-discovery'}",
+        ],
+    )
+    content = replace_or_append_section(
+        content,
+        "Recommended Motion Directions",
+        [f"- {item}" for item in recommendations] or ["- Manual motion direction needed."],
+    )
+    write_text(page_path, content)
 
-    append_section(
-        plan_path,
+
+def update_plan_artifact(root: Path, page: str, discovery: dict, mode: str, questions: list[str], recommendations: list[str]):
+    plan_path = root / ".gsap" / "animation-plan.md"
+    content = read_text(plan_path)
+    page_slug = slugify(page)
+    page_structure = discovery["page_structure"]
+
+    content = set_field(content, "Current Mode", mode)
+    content = set_field(content, "Resume State", "Discovery complete")
+    content = replace_or_append_section(
+        content,
         f"Workflow Snapshot - {page_slug}",
         [
-            f"- Mode: gsap-new",
-            f"- Page: {page_slug}",
-            "- Resume State: Bootstrap complete",
-            "- Next Agent Action: Read artifacts, ask only missing questions, then implement.",
+            f"- Mode: {mode}",
+            f"- Framework: {discovery['framework']}",
+            f"- Package Manager: {discovery['package_manager']}",
+            f"- Existing Motion Stack: {', '.join(discovery['motion_stack'].keys()) if discovery['motion_stack'] else 'No motion libraries detected'}",
+            f"- Suggested Next Command: {'Implement against .gsap plan and update page status fields.'}",
         ],
     )
+    content = replace_or_append_section(
+        content,
+        f"Implementation Plan - {page_slug}",
+        [
+            "- Inspect matched source files before editing.",
+            "- Confirm any unresolved questions from discovery.",
+            "- Implement above-the-fold motion first.",
+            "- Add grid/card/stat motion only after mobile and reduced-motion rules are clear.",
+            "- Update .gsap page artifact after each major section is done.",
+        ],
+    )
+    content = replace_or_append_section(
+        content,
+        f"Detected Project Signals - {page_slug}",
+        [
+            f"- Matched Files: {', '.join(file.name for file in page_structure['page_files'][:8]) if page_structure['page_files'] else 'No direct file matches'}",
+            f"- Sections: {', '.join(page_structure['sections']) if page_structure['sections'] else 'Not inferred'}",
+            "- Recommendations:",
+            *[f"  - {item}" for item in recommendations],
+            "- Open Questions:",
+            *[f"  - {item}" for item in (questions or ['None from auto-discovery'])],
+        ],
+    )
+    write_text(plan_path, content)
 
-    if "Brand references:" in read_text(spec_path):
-        return
 
-
-def write_refactor_workflow_state(root: Path, page: str):
-    page_slug = slugify(page)
-    plan_path = root / ".gsap" / "animation-plan.md"
+def update_audit_artifact(root: Path, page: str, discovery: dict, questions: list[str], recommendations: list[str]):
     audit_path = root / ".gsap" / "audit-report.md"
-    page_path = root / ".gsap" / "pages" / f"{page_slug}.animation.md"
-    page_files = find_page_files(root, page)
+    content = read_text(audit_path)
+    page_slug = slugify(page)
+    motion_stack = discovery["motion_stack"]
+    page_structure = discovery["page_structure"]
+    findings = []
 
-    summaries = []
-    for source_file in page_files[:6]:
-        usage = summarize_usage(read_text(source_file))
-        summaries.append(
-            f"- {source_file.name}: gsap_calls={usage['gsap_calls']}, "
-            f"scrollTrigger={usage['scroll_trigger']}, useGSAP={usage['use_gsap']}, "
-            f"reducedMotion={usage['reduced_motion']}"
-        )
+    if "GSAP" not in motion_stack:
+        findings.append("GSAP does not appear to be implemented yet on the matched files.")
+    if "Hero" in page_structure["sections"] and "Cards" in page_structure["sections"]:
+        findings.append("Hero and repeated-card motion should share a clear hierarchy rather than equal visual weight.")
+    if not discovery["design_tokens"]["colors"]:
+        findings.append("No obvious brand color tokens were detected automatically; motion styling may need manual brand direction.")
+    if not findings:
+        findings.append("Existing page signals were detected; proceed with a careful refactor plan rather than a full reset.")
 
-    if not summaries:
-        summaries.append("- No obvious page-specific source files were matched. Manual inspection needed.")
-
-    append_section(
-        audit_path,
+    content = replace_or_append_section(
+        content,
         f"Refactor Snapshot - {page_slug}",
         [
-            f"- Mode: gsap-refactor",
-            f"- Page: {page_slug}",
-            "- Current code audit:",
-            *summaries,
+            f"- Existing Motion Stack: {', '.join(motion_stack.keys()) if motion_stack else 'None detected'}",
+            f"- Matched Files: {', '.join(file.name for file in page_structure['page_files'][:8]) if page_structure['page_files'] else 'No direct matches'}",
+            "- Findings:",
+            *[f"  - {item}" for item in findings],
+            "- Recommended Improvements:",
+            *[f"  - {item}" for item in recommendations],
+            "- Open Questions:",
+            *[f"  - {item}" for item in (questions or ['None from auto-discovery'])],
         ],
     )
+    write_text(audit_path, content)
 
-    opportunities = scan_opportunities(root, page)
-    append_section(
-        plan_path,
-        f"Refactor Plan - {page_slug}",
-        [
-            "- Preserve good motion and remove noise.",
-            "- Add reduced-motion handling where missing.",
-            "- Simplify mobile-heavy patterns before adding more effects.",
-            "- Candidate improvements:",
-            *[f"  {item}" for item in (opportunities or ['Manual review required.'])],
-        ],
+
+def render_summary_table(discovery: dict, page: str, questions: list[str]):
+    table = Table(title=f"GSAP Discovery - {page}")
+    table.add_column("Signal", style="cyan")
+    table.add_column("Value", style="white")
+    table.add_row("Framework", discovery["framework"])
+    table.add_row("Package manager", discovery["package_manager"])
+    table.add_row("Routes detected", str(len(discovery["routes"])))
+    table.add_row(
+        "Matched files",
+        ", ".join(file.name for file in discovery["page_structure"]["page_files"][:5]) or "None",
     )
-
-    page_content = read_text(page_path)
-    page_content = set_field(page_content, "Status", "Refactor in progress")
-    write_text(page_path, page_content)
+    table.add_row(
+        "Sections",
+        ", ".join(discovery["page_structure"]["sections"]) or "Not inferred",
+    )
+    table.add_row(
+        "Motion stack",
+        ", ".join(discovery["motion_stack"].keys()) if discovery["motion_stack"] else "None detected",
+    )
+    table.add_row(
+        "Questions",
+        str(len(questions)),
+    )
+    return table
 
 
 @click.group()
@@ -281,20 +653,25 @@ def gsap_new(path, page, project_name):
     """Bootstrap and orchestrate new-page workflow state."""
     root = find_project_root(path)
     created = ensure_workspace(root, page, project_name)
-    write_new_workflow_state(root, page)
+    discovery = discover_project(root, page)
+    questions = infer_questions(discovery, "gsap-new")
+    recommendations = infer_recommendations(discovery, "gsap-new")
+
+    update_animation_spec(root, page, discovery, questions)
+    update_page_artifact(root, page, discovery, "gsap-new", questions, recommendations)
+    update_plan_artifact(root, page, discovery, "gsap-new", questions, recommendations)
 
     console.print(
         Panel(
             f"[bold cyan]gsap-new[/] prepared workflow state for [bold white]{page}[/]\n"
-            f"[dim]framework: {detect_framework(root)}[/]",
+            f"[dim]framework: {discovery['framework']} | package manager: {discovery['package_manager']}[/]",
             border_style="cyan",
         )
     )
     if created:
-        for path in created:
-            console.print(f"[green]Created[/] {path}")
-    console.print(f"[green]Updated[/] {root / '.gsap' / 'animation-plan.md'}")
-    console.print(f"[green]Updated[/] {root / '.gsap' / 'pages' / f'{slugify(page)}.animation.md'}")
+        for created_path in created:
+            console.print(f"[green]Created[/] {created_path}")
+    console.print(render_summary_table(discovery, page, questions))
 
 
 @cli.command(name="gsap-refactor")
@@ -305,20 +682,26 @@ def gsap_refactor(path, page, project_name):
     """Bootstrap and orchestrate refactor workflow state."""
     root = find_project_root(path)
     created = ensure_workspace(root, page, project_name)
-    write_refactor_workflow_state(root, page)
+    discovery = discover_project(root, page)
+    questions = infer_questions(discovery, "gsap-refactor")
+    recommendations = infer_recommendations(discovery, "gsap-refactor")
+
+    update_animation_spec(root, page, discovery, questions)
+    update_page_artifact(root, page, discovery, "gsap-refactor", questions, recommendations)
+    update_plan_artifact(root, page, discovery, "gsap-refactor", questions, recommendations)
+    update_audit_artifact(root, page, discovery, questions, recommendations)
 
     console.print(
         Panel(
             f"[bold cyan]gsap-refactor[/] prepared refactor state for [bold white]{page}[/]\n"
-            f"[dim]framework: {detect_framework(root)}[/]",
+            f"[dim]framework: {discovery['framework']} | package manager: {discovery['package_manager']}[/]",
             border_style="cyan",
         )
     )
     if created:
-        for path in created:
-            console.print(f"[green]Created[/] {path}")
-    console.print(f"[green]Updated[/] {root / '.gsap' / 'audit-report.md'}")
-    console.print(f"[green]Updated[/] {root / '.gsap' / 'animation-plan.md'}")
+        for created_path in created:
+            console.print(f"[green]Created[/] {created_path}")
+    console.print(render_summary_table(discovery, page, questions))
 
 
 @cli.command(name="_status", hidden=True)
@@ -358,8 +741,12 @@ def internal_init(path):
     config_path = root / ANIMATION_CONFIG_FILE
     if not config_path.exists():
         config = {
-            "version": "3.0",
-            "project": {"name": root.name, "framework": detect_framework(root)},
+            "version": "3.1",
+            "project": {
+                "name": root.name,
+                "framework": detect_framework(root),
+                "package_manager": detect_package_manager(root),
+            },
             "performance": {"reduced_motion": True, "device_priority": "mobile-first"},
         }
         config_path.write_text(yaml.dump(config, default_flow_style=False, sort_keys=False), encoding="utf-8")

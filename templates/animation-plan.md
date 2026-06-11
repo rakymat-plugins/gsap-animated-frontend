@@ -5,6 +5,7 @@
 - Current Mode:
 - Resume State:
 - Last Updated By:
+- Suggested Next Command:
 
 ## Target Scope
 
@@ -33,3 +34,4 @@
 - [ ] Mobile-heavy effects reviewed
 - [ ] Existing code inspected before changes
 - [ ] Page artifact updated after implementation
+- [ ] Discovery questions resolved or consciously deferred

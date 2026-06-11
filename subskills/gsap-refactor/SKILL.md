@@ -11,11 +11,12 @@ Use this workflow for existing pages/components that already have code and may a
 
 1. Read `.gsap` artifacts first.
 2. Read the actual implementation files.
-3. Run internal audit and scan helpers.
-4. Identify what to preserve, remove, simplify, or improve.
-5. Update `.gsap/audit-report.md` and `.gsap/animation-plan.md`.
-6. Apply safe changes.
-7. Update page artifact statuses and notes.
+3. Run internal discovery, audit, and scan helpers.
+4. Detect framework, packages, routes, current motion libraries, and matched page files.
+5. Identify what to preserve, remove, simplify, or improve.
+6. Update `.gsap/audit-report.md` and `.gsap/animation-plan.md`.
+7. Apply safe changes.
+8. Update page artifact statuses and notes.
 
 ## Internal Helper
 
@@ -25,7 +26,7 @@ Use:
 python scripts/gsap_workflow.py gsap-refactor --path "<project>" --page "<page>"
 ```
 
-This command should gather current workflow state and write audit/refactor notes. It is the only public helper command for this mode.
+This command should gather current workflow state, inspect the project structure, detect current motion systems, write audit/refactor notes, and prepare implementation state. It is the only public helper command for this mode.
 
 ## Refactor Rules
 
