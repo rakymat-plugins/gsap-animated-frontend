@@ -1,7 +1,7 @@
 # GSAP Animated Frontend
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/yousefabdallah171/gsap-animated-frontend/main/assets/gsap-skill-banner.svg" alt="GSAP Animated Frontend" width="800" />
+  <img src="https://raw.githubusercontent.com/rakymat-plugins/gsap-animated-frontend/main/assets/gsap-skill-banner.svg" alt="GSAP Animated Frontend" width="800" />
 </p>
 
 <p align="center">
@@ -186,7 +186,7 @@ This prevents agents from trying to rebuild an entire page in one pass and usual
 Install from your project root with:
 
 ```bash
-npx skills add yousefabdallah171/gsap-animated-frontend
+npx skills add rakymat-plugins/gsap-animated-frontend
 ```
 
 This is the only documented install path for:
